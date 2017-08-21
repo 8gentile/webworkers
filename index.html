@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html>
+<head>
+</head>
+<body>
+  <h1>Big Web Workers!</h1>
+  <script>
+    let worker = new Worker('worker.js'),
+      nextCorrelationId = 1,
+      callbacks = {};
+
+    worker.addEventListener('message', e=> {
+      if (callbacks[e.data.correlationId]) {
+        callbacks[e.data.correlationId](e.data.result);
+        delete callbacks[e.data.correlationId];
+      }
+    });
+
+    worker.addEventListener('error', e => {
+      console.log(e);
+    })
+
+    let msg = {
+      type: 'add',
+      args: [1],
+      correlationId: nextCorrelationId++
+    };
+
+    callbacks[msg.correlationId] = ( msg => {
+      return result => {
+        if (result.isError) {
+          console.log('Something went wrong');
+        } else {
+          console.log('The result of adding', msg.args, 'is', result.value);
+        }
+      }
+    })(msg);
+
+    worker.postMessage(msg);
+
+    msg = {
+      type: 'subtract',
+      args: [5, 2],
+      correlationId: nextCorrelationId++
+    };
+
+    callbacks[msg.correlationId] = ( msg => {
+      return result => {
+        console.log('The result of subtracting', msg.args, 'is', result);
+      }
+    })(msg);
+
+    worker.postMessage(msg);
+
+    // worker.postMessage({
+    //   type: 'add',
+    //   args: [1, 2]
+    // });
+
+    // worker.postMessage({
+    //   type: 'subtract',
+    //   args: [10, 5]
+    // })
+  </script>
+</body>
+</html>
